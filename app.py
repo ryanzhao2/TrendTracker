@@ -80,7 +80,7 @@ def home_page():
         <div class="section-title2">Local Installation</div>
         <ol>
             <li class="list-item">Clone the repo</li>
-            <pre class="code-block"><code>git clone https://github.com/user/stockastic.git</code></pre>
+            <pre class="code-block"><code>git clone https://github.com/user/TrendTracker.git</code></pre>
             <li class="list-item">Install requirements</li>
             <pre class="code-block"><code>pip install -r requirements.txt</code></pre>
             <li class="list-item">Change directory</li>
