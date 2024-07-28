@@ -27,7 +27,7 @@ PredictiveStocks is designed with the following key technologies and tools:
 
 1. Clone the repo
     ```bash
-    git clone https://github.com/user/stockastic.git
+    git clone https://github.com/user/TrendTracker.git
     ```
 2. Install requirements
     ```bash
