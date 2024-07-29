@@ -166,6 +166,7 @@ def forecast_page():
                 st.error(f"No data found for stock: {selected_stock} with period {period} and interval {interval}")
                 return
 
+            #Display historical data
             fig = go.Figure(
                 data=[
                     go.Candlestick(
