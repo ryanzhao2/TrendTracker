@@ -1,8 +1,14 @@
 {
     "builds": [
         {
-            "src": "TrendTracker/forecast.py",
+            "src": "forecast.py",
             "use": "@vercel/python"
+        }
+    ],
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "/forecast.py"
         }
     ]
 }
