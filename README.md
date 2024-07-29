@@ -31,13 +31,13 @@ PredictiveStocks is designed with the following key technologies and tools:
     ```bash
     git clone https://github.com/user/stockastic.git
     ```
-2. Install requirements
+2. Change directory
+    ```bash
+    cd TrendTracker
+    ```
+3. Install requirements
     ```bash
     pip install -r requirements.txt
-    ```
-3. Change directory
-    ```bash
-    cd streamlit_app
     ```
 4. Host the server
     ```bash
