@@ -1,0 +1,8 @@
+{
+    "builds": [
+        {
+            "src": "TrendTracker/forecast.py",
+            "use": "@vercel/python"
+        }
+    ]
+}
