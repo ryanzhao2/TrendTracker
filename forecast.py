@@ -17,7 +17,7 @@ class StockRequest(BaseModel):
     epochs: int
 
 # Define the prediction endpoint
-@app.post('/LSTM_Predict')
+@app.post('/TrendTracker')
 async def predict(stock_request: StockRequest):
     stock_name = stock_request.stock_name
     epochs = stock_request.epochs
