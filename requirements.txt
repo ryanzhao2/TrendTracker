@@ -1,6 +1,6 @@
 streamlit==1.36.0
 uvicorn==0.30.1
-fastapi==0.95.0
+fastapi==0.111.1
 keras==3.4.1
 pandas==2.0.3
 plotly==5.23.0
