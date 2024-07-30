@@ -1,14 +1,14 @@
 {   
     "builds": [
         {
-            "src": "forecast.py",
+            "src": "test.py",
             "use": "@vercel/python"
         }
     ],
     "routes": [
         {
             "src": "/(.*)",
-            "dest": "forecast.py"
+            "dest": "test.py"
         }
     ]
 }
