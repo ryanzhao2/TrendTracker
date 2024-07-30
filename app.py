@@ -13,7 +13,7 @@ from helper import *
 
 # Constants
 #API_URL is the API endpoint to get LSTM predictions
-API_URL = "https://trend-tracker-tau.vercel.app/TrendTracker"
+API_URL = "http://127.0.0.1:8000/LSTM_Predict"
 MIN_DATE = datetime.date(2020, 1, 1)
 MAX_DATE = datetime.date(2022, 12, 31)
 DATA_DIR = 'data'
