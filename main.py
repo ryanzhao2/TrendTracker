@@ -3,4 +3,4 @@ from os import getenv
 
 if __name__ == "__main__":
     port = int(getenv("PORT", 8000))
-    uvicorn.run("forecast:app --reload", host="0.0.0.0",port=port,reload=True)
+    uvicorn.run("forecast:app", host="0.0.0.0", port=port, reload=True)

@@ -1,8 +1,7 @@
 {   
-    "version":2,
     "builds": [
         {
-            "src": "/forecast.py",
+            "src": "forecast.py",
             "use": "@vercel/python"
         }
     ],
