@@ -13,7 +13,7 @@ from helper import *
 
 # Constants
 #API_URL is the API endpoint to get LSTM predictions
-API_URL = "https://trendtracker-uvqu.onrender.com/TrendTracker"
+API_URL = "https://trendtracker-uvqu.onrender.com"
 
 MIN_DATE = datetime.date(2020, 1, 1)
 MAX_DATE = datetime.date(2022, 12, 31)
