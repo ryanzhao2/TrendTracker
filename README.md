@@ -29,7 +29,7 @@ PredictiveStocks is designed with the following key technologies and tools:
 
 1. Clone the repo
     ```bash
-    git clone https://github.com/user/stockastic.git
+    git clone https://github.com/ryanzhao2/TrendTracker
     ```
 2. Change directory
     ```bash
@@ -48,7 +48,7 @@ PredictiveStocks is designed with the following key technologies and tools:
     streamlit run app.py
     ```
 
-The app will be live at [http://localhost:8501](http://localhost:8501)
+The app will be live at [http://localhost:8501](http://localhost:8501) and can also be found at: trendtracker.streamlit.app/
 
 ## 💡 Future Roadmap
 

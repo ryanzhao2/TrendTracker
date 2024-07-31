@@ -15,11 +15,7 @@ app = FastAPI()
 class StockRequest(BaseModel):
     stock_name: str
     epochs: int
-
-# @app.get("/")
-# def read_root():
-#     return {"message": "Welcome to the API"}
-
+    
 # Define the prediction endpoint
 @app.post("/")
 async def predict(stock_request: StockRequest):
