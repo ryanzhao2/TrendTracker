@@ -48,7 +48,7 @@ PredictiveStocks is designed with the following key technologies and tools:
     streamlit run app.py
     ```
 
-The app will be live at [http://localhost:8501](http://localhost:8501) and can also be found at: [trendtracker.streamlit.app](trendtracker.streamlit.app)
+The app will be live at [http://localhost:8501](http://localhost:8501) and can also be found at: [https://trendtracker.streamlit.app](https://trendtracker.streamlit.app)
 
 ## 💡 Future Roadmap
 
