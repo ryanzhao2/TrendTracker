@@ -21,7 +21,7 @@ class StockRequest(BaseModel):
 #     return {"message": "Welcome to the API"}
 
 # Define the prediction endpoint
-@app.post('/LSTM_Predict')
+@app.post('/trend_tracker')
 async def predict(stock_request: StockRequest):
     stock_name = stock_request.stock_name
     epochs = stock_request.epochs
