@@ -81,7 +81,7 @@ def home_page():
         <div class="section-title2">Local Installation</div>
         <ol>
             <li class="list-item">Clone the repo</li>
-            <pre class="code-block"><code>git clone https://github.com/ryanzhao2/TrendTracker.git</code></pre>
+            <pre class="code-block"><code>git clone https://github.com/MY_CURRENT_USERNAME/TrendTracker.git</code></pre>
             <li class="list-item">Change directory</li>
             <pre class="code-block"><code>cd TrendTracker</code></pre>
             <li class="list-item">Install requirements</li>

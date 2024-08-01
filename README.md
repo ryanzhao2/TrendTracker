@@ -29,7 +29,7 @@ PredictiveStocks is designed with the following key technologies and tools:
 
 1. Clone the repo
     ```bash
-    git clone https://github.com/ryanzhao2/TrendTracker
+    git clone https://github.com/MY_CURRENT_USERNAME/TrendTracker
     ```
 2. Change directory
     ```bash
