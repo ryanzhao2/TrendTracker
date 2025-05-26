@@ -1,4 +1,6 @@
-# 📈 PredictiveStocks
+# �� PredictiveStocks
+
+> **Note:** As of 2025, the Yahoo Finance API now requires a paid subscription for reliable access. Free access may be limited, rate-limited, or unavailable, which can affect the functionality of this app.
 
 ## AI-Driven Stock Price Predictions
 
