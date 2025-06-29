@@ -8,8 +8,13 @@ import datetime
 import numpy as np
 import os
 import json
+from datetime import datetime, timedelta
 
 from helper import *
+from database import DatabaseManager
+
+# Initialize database manager
+db_manager = DatabaseManager()
 
 # Constants
 #API_URL is the API endpoint to get LSTM predictions
@@ -29,7 +34,6 @@ def load_tickers():
     file_name = os.path.join(DATA_DIR, 'nasdaq_screener.csv')
     tickers_df = pd.read_csv(file_name)
     return tickers_df["Symbol"].tolist()
-
 
 def home_page():
     st.markdown("""
@@ -51,7 +55,7 @@ def home_page():
         <div class="subtitle">AI-Driven Stock Price Predictions</div>
         
         <div class="text">
-            TrendTracker is an advanced stock price forecasting application powered by machine learning, specifically using LSTM models. Built with Python and Streamlit, this app aims to forecast stock prices and support investors in making informed decisions.
+            TrendTracker is an advanced stock price forecasting application powered by machine learning, specifically using LSTM models. Built with Python, Streamlit, and PostgreSQL, this app aims to forecast stock prices and support investors in making informed decisions.
         </div>""", unsafe_allow_html=True)
         
     st.markdown("---")
@@ -64,6 +68,7 @@ def home_page():
         <ul>
             <li class="list-item">Streamlit - For developing the interactive web application interface</li>
             <li class="list-item">FastAPI - For creating high-performance, asynchronous APIs that handle data retrieval and processing</li>
+            <li class="list-item">PostgreSQL - For storing historical stock data, predictions, and user watchlists</li>
             <li class="list-item">YFinance - To retrieve financial data from Yahoo Finance</li>
             <li class="list-item">TensorFlow/Keras - To build and train the LSTM time series forecasting model</li>
             <li class="list-item">Plotly - To generate interactive charts and visualizations</li>
@@ -75,6 +80,8 @@ def home_page():
             <li class="list-item"><strong>Financial Charts</strong> - Explore interactive historical and forecast charts</li>
             <li class="list-item"><strong>LSTM Forecasting</strong> - Generate statistically robust stock price predictions</li>
             <li class="list-item"><strong>Model Tuning</strong> - Optimize forecasting accuracy by adjusting the number of epochs and period length</li>
+            <li class="list-item"><strong>Database Storage</strong> - Store and retrieve predictions, historical data, and user preferences</li>
+            <li class="list-item"><strong>Watchlist Management</strong> - Create and manage personalized stock watchlists</li>
         </ul>
         
         <div class="section-title">🚀 Getting Started</div>
@@ -86,6 +93,7 @@ def home_page():
             <pre class="code-block"><code>cd TrendTracker</code></pre>
             <li class="list-item">Install requirements</li>
             <pre class="code-block"><code>pip install -r requirements.txt</code></pre>
+            <li class="list-item">Set up PostgreSQL database and configure DATABASE_URL in .env file</li>
             <li class="list-item">Host the server</li>
             <pre class="code-block"><code>uvicorn forecast:app --reload</code></pre>
             <li class="list-item">Run the app</li>
@@ -129,10 +137,17 @@ def stock_info():
         stock_data_info = display_stock_details(stock)
         
         if stock_data_info:
-            for category, info in stock_data_info.items():
-                st.markdown(f"## **{category}**")
-                for key, value in info.items():
-                    st.write(f"**{key}:** {value}")
+            # Display model performance if available
+            performance = get_model_performance(stock)
+            if performance:
+                st.markdown("## **Model Performance**")
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("Accuracy", f"{performance['accuracy_score']:.2f}%")
+                col2.metric("MSE", f"{performance['mse_score']:.4f}")
+                col3.metric("MAE", f"{performance['mae_score']:.4f}")
+                col4.metric("Model Version", performance['model_version'])
+                
+                st.write(f"Last trained: {performance['training_date'].strftime('%Y-%m-%d %H:%M')}")
     else:
         st.write("Please select a stock from the dropdown.")
 
@@ -201,159 +216,274 @@ def forecast_page():
                     response = requests.post(API_URL, json=payload, stream=True)
                     response.raise_for_status()
 
+                    # Process streaming response
                     train_predictions = []
                     test_predictions = []
                     future_predictions = []
-                    total_epochs = epochs
+                    model_performance = {}
 
                     for line in response.iter_lines():
                         if line:
                             data = json.loads(line.decode('utf-8'))
+                            
                             if 'epoch' in data:
-                                init_message.empty()
-                                epoch = data.get('epoch', 0)
-                                loss = data.get('loss', 0)
-                                mse = data.get('mean_squared_error', 0)
-                                progress = int((epoch / total_epochs) * 100)
+                                # Training progress
+                                epoch = data['epoch']
+                                loss = data['loss']
+                                progress = epoch / epochs
                                 progress_bar.progress(progress)
-                                status_text.text(f"Processing... Epoch {epoch}/{total_epochs} | Loss: {loss:.5f} | MSE: {mse:.5f}")
-                            elif 'train_predictions' in data and 'test_predictions' in data:
-                                train_predictions = data.get("train_predictions", [])
-                                test_predictions = data.get("test_predictions", [])
-                                future_predictions = data.get("future_predictions", [])
+                                status_text.text(f"Training epoch {epoch}/{epochs} - Loss: {loss:.4f}")
+                            
+                            elif 'train_predictions' in data:
+                                # Final predictions
+                                train_predictions = data['train_predictions']
+                                test_predictions = data['test_predictions']
+                                future_predictions = data['future_predictions']
+                                model_performance = data.get('model_performance', {})
+                                
+                                progress_bar.progress(1.0)
+                                status_text.text("Prediction complete!")
 
-                    progress_bar.empty()
-                    status_text.empty()
+                    # Display model performance
+                    if model_performance:
+                        st.markdown("### **Model Performance Metrics**")
+                        col1, col2, col3, col4 = st.columns(4)
+                        col1.metric("Accuracy", f"{model_performance.get('accuracy', 0):.2f}%")
+                        col1.metric("MSE", f"{model_performance.get('mse', 0):.4f}")
+                        col1.metric("MAE", f"{model_performance.get('mae', 0):.4f}")
+                        col1.metric("Final Loss", f"{model_performance.get('final_loss', 0):.4f}")
 
-                    if not train_predictions or not test_predictions:
-                        st.warning("Predictions data is empty.")
-                        return
-
-                    # train_pred_dates = stock_data.index[:len(train_predictions)]
-                    test_pred_dates = stock_data.index[-len(test_predictions):]
-                    future_dates = pd.date_range(start=stock_data.index[-1] + pd.Timedelta(days=1), periods=90)
+                    # Create prediction chart
+                    if test_predictions:
+                        # Get dates for predictions
+                        test_dates = stock_data.index[-len(test_predictions):]
 
                     fig = go.Figure()
-                    fig.add_trace(go.Scatter(x=stock_data.index, y=stock_data["Close"], name='Actual'))
-                    # fig.add_trace(go.Scatter(x=train_pred_dates, y=train_predictions, name='Train Predictions'))
-                    fig.add_trace(go.Scatter(x=test_pred_dates, y=test_predictions, name='Test Predictions'))
-                    fig.add_trace(go.Scatter(x=future_dates, y=future_predictions, name='Future Predictions'))
+                        
+                        # Add actual prices
+                        fig.add_trace(go.Scatter(
+                            x=stock_data.index,
+                            y=stock_data['Close'],
+                            mode='lines',
+                            name='Actual Price',
+                            line=dict(color='blue')
+                        ))
+                        
+                        # Add test predictions
+                        fig.add_trace(go.Scatter(
+                            x=test_dates,
+                            y=test_predictions,
+                            mode='lines',
+                            name='Predicted Price',
+                            line=dict(color='red', dash='dash')
+                        ))
+                        
                     fig.update_layout(
-                    title=f"Stock Predictions for: {selected_stock}", yaxis=dict(
-                        tickprefix='$',  # Add $ symbol before the price values
-                        title='Price (USD)'  # Optional: set the title for the y-axis
-                    )
-                )   
-                    st.plotly_chart(fig)
+                            title=f'Stock Price Prediction for {selected_stock}',
+                            xaxis_title='Date',
+                            yaxis_title='Price (USD)',
+                            yaxis=dict(tickprefix='$')
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
 
                 except requests.exceptions.RequestException as e:
-                    st.error(f"Error occurred while making the request: {e}")
-                    progress_bar.empty()
-                    status_text.empty()
-                except KeyError as e:
-                    st.error(f"Key error: {e}")
-                    progress_bar.empty()
-                    status_text.empty()
+                    st.error(f"Error connecting to prediction service: {e}")
+                except json.JSONDecodeError as e:
+                    st.error(f"Error parsing response: {e}")
                 except Exception as e:
-                    st.error(f"An unexpected error occurred: {e}")
-                    progress_bar.empty()
-                    status_text.empty()
+                    st.error(f"Unexpected error: {e}")
+
         except Exception as e:
-            st.error(f"An error occurred: {e}")
+            st.error(f"Error fetching stock data: {e}")
+
+def watchlist_page():
+    st.title("Watchlist Management")
+    
+    # Simple user ID (in a real app, this would come from authentication)
+    user_id = st.session_state.get('user_id', 'default_user')
+    
+    st.markdown("## **Add to Watchlist**")
+    
+    stock_tickers = load_tickers()
+    new_stock = st.selectbox("Select stock to add", stock_tickers)
+    notes = st.text_area("Notes (optional)")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Add to Watchlist"):
+            if db_manager.add_to_watchlist(user_id, new_stock, notes):
+                st.success(f"Added {new_stock} to watchlist!")
+            else:
+                st.warning(f"{new_stock} is already in your watchlist.")
+    
+    with col2:
+        if st.button("Refresh Watchlist"):
+            st.rerun()
+    
+    st.markdown("## **Your Watchlist**")
+    
+    watchlist_items = db_manager.get_watchlist(user_id)
+    
+    if watchlist_items:
+        for item in watchlist_items:
+            with st.expander(f"{item.symbol} - Added {item.added_at.strftime('%Y-%m-%d')}"):
+                col1, col2 = st.columns([3, 1])
+                
+                with col1:
+                    # Get current stock info
+                    try:
+                        stock_info = fetch_stock_info(item.symbol)
+                        current_price = stock_info.get('regularMarketPrice', 'N/A')
+                        company_name = stock_info.get('longName', 'N/A')
+                        
+                        st.write(f"**Company:** {company_name}")
+                        st.write(f"**Current Price:** ${current_price}" if current_price != 'N/A' else f"**Current Price:** {current_price}")
+                        
+                        if item.notes:
+                            st.write(f"**Notes:** {item.notes}")
+                    except Exception as e:
+                        st.write(f"Error fetching data for {item.symbol}: {e}")
+                
+                with col2:
+                    if st.button(f"Remove {item.symbol}", key=f"remove_{item.symbol}"):
+                        # Note: You would need to add a remove function to DatabaseManager
+                        st.warning("Remove functionality not implemented yet")
+    else:
+        st.write("Your watchlist is empty. Add some stocks to get started!")
+
+def database_stats_page():
+    st.title("Database Statistics")
+    
+    try:
+        from database import SessionLocal, StockData, StockPrediction, StockInfo, UserWatchlist, ModelPerformance
+        
+        session = SessionLocal()
+        
+        # Get statistics
+        total_stocks = session.query(StockData.symbol).distinct().count()
+        total_predictions = session.query(StockPrediction).count()
+        total_stock_info = session.query(StockInfo).count()
+        total_watchlist_items = session.query(UserWatchlist).count()
+        total_performance_records = session.query(ModelPerformance).count()
+        
+        # Display metrics
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Total Stocks", total_stocks)
+        col2.metric("Total Predictions", total_predictions)
+        col3.metric("Stock Info Records", total_stock_info)
+        
+        col1, col2 = st.columns(2)
+        col1.metric("Watchlist Items", total_watchlist_items)
+        col2.metric("Performance Records", total_performance_records)
+        
+        # Recent predictions
+        st.markdown("## **Recent Predictions**")
+        recent_predictions = session.query(StockPrediction)\
+            .order_by(StockPrediction.created_at.desc())\
+            .limit(10)\
+            .all()
+        
+        if recent_predictions:
+            pred_data = []
+            for pred in recent_predictions:
+                pred_data.append({
+                    'Symbol': pred.symbol,
+                    'Predicted Price': f"${pred.predicted_price:.2f}",
+                    'Date': pred.prediction_date.strftime('%Y-%m-%d'),
+                    'Confidence': f"{pred.confidence_score:.2f}" if pred.confidence_score else 'N/A',
+                    'Created': pred.created_at.strftime('%Y-%m-%d %H:%M')
+                })
+            
+            st.dataframe(pd.DataFrame(pred_data))
+        else:
+            st.write("No predictions found in database.")
+        
+        session.close()
+        
+    except Exception as e:
+        st.error(f"Error accessing database: {e}")
 
 def learn_more_page():
-    st.title("More Information")
-    st.write("This page provides additional resources and information about the Stock Predictor App, Long Short-Term Memory (LSTM) networks, and trading.")
-
-    st.subheader("📚 Learn More About LSTM")
-    st.markdown("""
-    Long Short-Term Memory (LSTM) networks are a type of recurrent neural network capable of learning order dependence in sequence prediction problems. Here are some resources to help you learn more:
-
-    - [Understanding LSTM Networks](https://colah.github.io/posts/2015-08-Understanding-LSTMs/)
-    - [Stock Market Predictions with LSTM in Python](https://www.datacamp.com/tutorial/lstm-python-stock-market)
-    - [Long Short-Term Memory (LSTM) Networks with TensorFlow](https://www.tensorflow.org/guide/keras/rnn)
-    - [Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow](https://www.oreilly.com/library/view/hands-on-machine-learning/9781492032632/) by Aurélien Géron (Book)
-
-    """)
-    st.markdown("---")
-
-    st.subheader("📈 Learn More About Trading")
-    st.markdown("""
-    Trading involves buying and selling financial instruments to make a profit. Here are some resources to help you learn more:
-
-    - [How to Trade Stocks: Six Steps to Get Started](https://www.investopedia.com/learn-how-to-trade-the-market-in-5-steps-4692230)
-    - [Technical Analysis: What It Is and How To Use It in Investing](https://www.investopedia.com/terms/t/technicalanalysis.asp)
-    - [Algorithmic Trading and DMA: An Introduction to Direct Access Trading Strategies](https://www.amazon.com/Algorithmic-Trading-DMA-introduction-strategies/dp/0956399207) by Barry Johnson (Book)
-    - [Quantitative Trading: How to Build Your Own Algorithmic Trading Business](https://www.amazon.com/Quantitative-Trading-Build-Algorithmic-Business/dp/0470284889) by Ernie Chan (Book)
-    - [Dancing With The Analysts- A Financial Novel](https://www.amazon.ca/Dancing-Analysts-Financial-Novel-Mallach/dp/0970568428) by David A Mallach (Book)
-    """)
-
-    st.markdown("---")
-
-    st.subheader("🎥 Video Tutorials")
-    st.markdown("""
-    Here are some video tutorials to get you started with LSTM networks and trading strategies:
-
-    - **Introduction to LSTM**:
-      [![LSTM Networks](https://img.youtube.com/vi/8HyCNIVRbSU/0.jpg)](https://www.youtube.com/watch?v=8HyCNIVRbSU)
+    st.title("Learn More")
+    st.write("This page provides additional information about the project and its features.")
     
-    - **Trading for Beginners**:
-      [![Trading for Beginners](https://img.youtube.com/vi/_YVQN6_nkfs/0.jpg)](https://www.youtube.com/watch?v=_YVQN6_nkfs)
+    st.markdown("## **About the Technology Stack**")
+    
+    st.markdown("### **Machine Learning**")
+    st.write("""
+    - **LSTM (Long Short-Term Memory)**: A type of recurrent neural network that can learn long-term dependencies
+    - **TensorFlow/Keras**: Deep learning framework used for building and training the LSTM model
+    - **Scikit-learn**: Used for data preprocessing and performance metrics calculation
+    """)
+    
+    st.markdown("### **Web Framework**")
+    st.write("""
+    - **Streamlit**: Python library for creating web applications with minimal code
+    - **FastAPI**: Modern, fast web framework for building APIs with Python
+    """)
+    
+    st.markdown("### **Data Storage**")
+    st.write("""
+    - **PostgreSQL**: Relational database for storing historical stock data, predictions, and user data
+    - **SQLAlchemy**: Python SQL toolkit and Object-Relational Mapping (ORM) library
+    """)
+    
+    st.markdown("### **Data Sources**")
+    st.write("""
+    - **Yahoo Finance**: Primary source for real-time and historical stock data
+    - **NASDAQ Screener**: Source for stock ticker symbols and basic company information
+    """)
+    
+    st.markdown("## **Model Architecture**")
+    st.write("""
+    The LSTM model used in this application consists of:
+    - **Input Layer**: 60 time steps of historical price data
+    - **LSTM Layer 1**: 128 units with return sequences
+    - **Dropout Layer**: 20% dropout for regularization
+    - **LSTM Layer 2**: 64 units
+    - **Dropout Layer**: 20% dropout for regularization
+    - **Dense Layer**: 1 unit for price prediction
+    """)
+    
+    st.markdown("## **Performance Metrics**")
+    st.write("""
+    The model performance is evaluated using:
+    - **Mean Squared Error (MSE)**: Measures the average squared difference between predicted and actual values
+    - **Mean Absolute Error (MAE)**: Measures the average absolute difference between predicted and actual values
+    - **Accuracy**: Percentage of predictions within 5% of actual values
     """)
 
-    st.subheader("🔗 Useful Links")
-    st.markdown("""
-    - [TensorFlow Documentation](https://www.tensorflow.org/guide/keras/rnn)
-    - [Investopedia](https://www.investopedia.com/)
-    - [Yahoo Finance](https://finance.yahoo.com/)
-    """)
-
-# Main function to handle navigation
 def main():
     # Set up session state to manage page navigation
-    if 'page' not in st.session_state:
-        st.session_state.page = "Home"
+    if 'current_page' not in st.session_state:
+        st.session_state.current_page = 'Home'
     
-    # Custom CSS for removing button outlines and styling
-    st.markdown("""
-        <style>
-        .stButton button {
-            border: none;
-            background-color: #31333F;
-            padding: 8px;
-            margin: 5px 0;
-            border-radius: 5px;
-            font-size: 16px;
-            color: white;
-            cursor: pointer;
-            width: 100%;
-            text-align: center;
-        }
-        .stButton button:hover {
-            background-color: #ddd;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-
-    # Sidebar navigation with custom-styled buttons
+    # Sidebar navigation
     st.sidebar.title("Navigation")
-    if st.sidebar.button("Home"):
-        st.session_state.page = "Home"
-    if st.sidebar.button("Stock Info"):
-        st.session_state.page = "Stock Info"
-    if st.sidebar.button("Forecast"):
-        st.session_state.page = "Forecast"
-    if st.sidebar.button("Learn More"):
-        st.session_state.page = "Learn More"
-        
-    # Display the selected page
-    if st.session_state.page == "Home":
+    
+    # Page selection
+    page = st.sidebar.selectbox(
+        "Choose a page",
+        ['Home', 'Stock Information', 'Forecast', 'Watchlist', 'Database Stats', 'Learn More'],
+        index=['Home', 'Stock Information', 'Forecast', 'Watchlist', 'Database Stats', 'Learn More'].index(st.session_state.current_page)
+    )
+    
+    # Update session state
+    st.session_state.current_page = page
+    
+    # Display selected page
+    if page == 'Home':
         home_page()
-    elif st.session_state.page == "Stock Info":
+    elif page == 'Stock Information':
         stock_info()
-    elif st.session_state.page == "Forecast":
+    elif page == 'Forecast':
         forecast_page()
-    elif st.session_state.page == "Learn More":
+    elif page == 'Watchlist':
+        watchlist_page()
+    elif page == 'Database Stats':
+        database_stats_page()
+    elif page == 'Learn More':
         learn_more_page()
 
 if __name__ == "__main__":
